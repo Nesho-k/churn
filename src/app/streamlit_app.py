@@ -210,7 +210,7 @@ with st.form("churn_form"):
             format_func=lambda x: {"Month-to-month": "Mensuel", "One year": "Un an", "Two year": "Deux ans"}[x])
         paperless_billing = st.selectbox("Facturation électronique", ["Yes", "No"],
             format_func=lambda x: "Oui" if x == "Yes" else "Non")
-        payment_method = st.selectbox("Mode de paiement",
+        payment_method = st.selectbox("Mode de paement",
             ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"],
             format_func=lambda x: {
                 "Electronic check": "Chèque électronique",
