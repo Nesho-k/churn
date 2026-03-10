@@ -5,6 +5,3 @@ enableCORS = false
 [client]
 toolbarMode = "minimal"
 showErrorDetails = false
-
-[ui]
-hideTopBar = true

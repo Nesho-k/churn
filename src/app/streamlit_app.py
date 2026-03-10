@@ -23,12 +23,18 @@ st.markdown("""
     [data-testid="stToolbar"],
     [data-testid="stDecoration"],
     [data-testid="stHeader"],
-    .stDeployButton { display: none !important; }
+    [data-testid="stMainMenu"],
+    [data-testid="stStatusWidget"],
+    [data-testid="stAppViewBlockContainer"] > div:first-child > div:first-child > div:first-child > div[style*="position: fixed"],
+    .stDeployButton,
+    button[kind="header"],
+    div[data-testid="stToolbarActions"] { display: none !important; }
 
     /* Supprimer tout espace au-dessus du contenu */
     .stApp { margin-top: 0 !important; background-color: #f8f9fa; }
     .stApp > div { padding-top: 0 !important; }
-    section[data-testid="stMain"] > div { padding-top: 1.5rem !important; }
+    section[data-testid="stMain"] { padding-top: 0 !important; }
+    section[data-testid="stMain"] > div { padding-top: 0 !important; }
 
     /* Container principal */
     .block-container {
