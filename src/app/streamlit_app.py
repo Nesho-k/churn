@@ -19,11 +19,17 @@ st.markdown("""
     body { font-family: 'Inter', sans-serif; }
     .block-container { padding: 0 3rem 3rem 3rem; }
 
+    /* Cacher la toolbar Streamlit */
+    header[data-testid="stHeader"] { display: none !important; }
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
+    .stDeployButton { display: none !important; }
+
     /* ── Header ── */
     .app-header {
         background: linear-gradient(135deg, #FF6B00 0%, #FF8C00 100%);
         padding: 2.5rem 3rem 0 3rem;
-        margin: -3rem -3rem 2.5rem -3rem;
+        margin: -6rem -3rem 2.5rem -3rem;
         color: white;
     }
     .header-top {
