@@ -19,16 +19,25 @@ st.markdown("""
     body { font-family: 'Inter', sans-serif; }
 
     /* Cacher la toolbar et header Streamlit */
-    header[data-testid="stHeader"] { display: none !important; }
+    header[data-testid="stHeader"] { display: none !important; height: 0 !important; }
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     .stDeployButton { display: none !important; }
     [data-testid="stToolbar"] { display: none !important; }
+    [data-testid="stDecoration"] { display: none !important; }
+
+    /* Supprimer l'espace réservé pour le header Streamlit */
+    .stApp {
+        margin-top: 0 !important;
+    }
+    section[data-testid="stMain"] {
+        padding-top: 0 !important;
+    }
 
     /* Container principal */
     .block-container {
         padding: 0 3rem 3rem 3rem !important;
-        margin: 0 !important;
+        margin-top: 0 !important;
         max-width: 100% !important;
     }
 
