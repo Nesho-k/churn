@@ -17,20 +17,28 @@ st.set_page_config(
 st.markdown("""
 <style>
     body { font-family: 'Inter', sans-serif; }
-    .block-container { padding: 0 3rem 3rem 3rem; }
 
-    /* Cacher la toolbar Streamlit */
+    /* Cacher la toolbar et header Streamlit */
     header[data-testid="stHeader"] { display: none !important; }
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     .stDeployButton { display: none !important; }
+    [data-testid="stToolbar"] { display: none !important; }
+
+    /* Container principal */
+    .block-container {
+        padding: 0 3rem 3rem 3rem !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+    }
 
     /* ── Header ── */
     .app-header {
         background: linear-gradient(135deg, #FF6B00 0%, #FF8C00 100%);
         padding: 2.5rem 3rem 0 3rem;
-        margin: -6rem -3rem 2.5rem -3rem;
         color: white;
+        border-radius: 0 0 20px 20px;
+        margin-bottom: 2rem;
     }
     .header-top {
         display: flex;
@@ -78,7 +86,7 @@ st.markdown("""
     .header-line {
         height: 3px;
         background: rgba(255,255,255,0.25);
-        margin: 0 -3rem;
+        margin: 0 -3rem 0 -3rem;
     }
 
     /* ── Section labels ── */
