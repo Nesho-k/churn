@@ -34,4 +34,9 @@ ENV PYTHONUNBUFFERED=1 \
 EXPOSE 8501
 
 # 7. Run the Streamlit app
-CMD ["streamlit", "run", "src/app/streamlit_app.py", "--server.port", "8501", "--server.address", "0.0.0.0", "--server.headless", "true"]
+ENV STREAMLIT_SERVER_HEADLESS=true \
+    STREAMLIT_CLIENT_TOOLBAR_MODE=minimal \
+    STREAMLIT_UI_HIDE_TOP_BAR=true \
+    STREAMLIT_SERVER_ENABLE_CORS=false
+
+CMD ["streamlit", "run", "src/app/streamlit_app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]

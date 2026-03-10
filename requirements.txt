@@ -13,5 +13,5 @@ xgboost
 lightgbm
 catboost
 optuna
-streamlit
+streamlit==1.39.0
 
