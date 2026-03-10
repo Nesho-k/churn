@@ -18,26 +18,21 @@ st.markdown("""
 <style>
     body { font-family: 'Inter', sans-serif; }
 
-    /* Cacher la toolbar et header Streamlit */
-    header[data-testid="stHeader"] { display: none !important; height: 0 !important; }
-    #MainMenu { visibility: hidden; }
-    footer { visibility: hidden; }
+    /* Cacher tous les éléments UI de Streamlit */
+    header, footer, #MainMenu,
+    [data-testid="stToolbar"],
+    [data-testid="stDecoration"],
+    [data-testid="stHeader"],
     .stDeployButton { display: none !important; }
-    [data-testid="stToolbar"] { display: none !important; }
-    [data-testid="stDecoration"] { display: none !important; }
 
-    /* Supprimer l'espace réservé pour le header Streamlit */
-    .stApp {
-        margin-top: 0 !important;
-    }
-    section[data-testid="stMain"] {
-        padding-top: 0 !important;
-    }
+    /* Supprimer tout espace au-dessus du contenu */
+    .stApp { margin-top: 0 !important; background-color: #f8f9fa; }
+    .stApp > div { padding-top: 0 !important; }
+    section[data-testid="stMain"] > div { padding-top: 1.5rem !important; }
 
     /* Container principal */
     .block-container {
-        padding: 0 3rem 3rem 3rem !important;
-        margin-top: 0 !important;
+        padding: 0 2rem 3rem 2rem !important;
         max-width: 100% !important;
     }
 
@@ -46,7 +41,7 @@ st.markdown("""
         background: linear-gradient(135deg, #FF6B00 0%, #FF8C00 100%);
         padding: 2.5rem 3rem 0 3rem;
         color: white;
-        border-radius: 0 0 20px 20px;
+        border-radius: 16px;
         margin-bottom: 2rem;
     }
     .header-top {
@@ -95,7 +90,7 @@ st.markdown("""
     .header-line {
         height: 3px;
         background: rgba(255,255,255,0.25);
-        margin: 0 -3rem 0 -3rem;
+        margin: 0 -3rem;
     }
 
     /* ── Section labels ── */
