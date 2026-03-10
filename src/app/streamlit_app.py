@@ -21,13 +21,16 @@ st.markdown("""
     /* Cacher les éléments UI Streamlit */
     #MainMenu, footer { visibility: hidden; }
     [data-testid="stToolbar"] { display: none !important; }
+    [data-testid="stDecoration"] { display: none !important; }
+    header[data-testid="stHeader"] { display: none !important; }
 
     /* Fond de la page */
     .stApp { background-color: #f8f9fa; }
 
-    /* Container principal - padding réduit en haut */
+    /* Container principal */
     .block-container {
-        padding: 1rem 2rem 3rem 2rem !important;
+        padding-top: 1rem;
+        padding-bottom: 3rem;
         max-width: 100% !important;
     }
 
