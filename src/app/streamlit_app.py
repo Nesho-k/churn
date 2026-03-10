@@ -29,7 +29,7 @@ st.markdown("""
 
     /* Container principal */
     .block-container {
-        padding-top: 4rem !important;
+        padding-top: 1rem !important;
         padding-bottom: 3rem;
         max-width: 100% !important;
     }
@@ -55,6 +55,7 @@ st.markdown("""
         margin: 0 0 0.5rem 0;
         letter-spacing: -0.5px;
         line-height: 1.2;
+        color: white !important;
     }
     .header-sub {
         font-size: 0.95rem;
