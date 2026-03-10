@@ -3,5 +3,8 @@ headless = true
 enableCORS = false
 
 [client]
-toolbarMode = "viewer"
+toolbarMode = "minimal"
 showErrorDetails = false
+
+[ui]
+hideTopBar = true
