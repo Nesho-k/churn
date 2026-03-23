@@ -1,63 +1,211 @@
-## Telco Churn – End-to-End ML Project
-### Purpose
+# Prédiction de Résiliation Client – Pipeline ML déployé sur AWS
 
-Build and ship a full machine-learning solution for predicting customer churn in a telecom setting—from data prep and modeling to an API + web UI deployed on AWS.
+Projet de Data Science appliqué au secteur télécom : prédiction du churn client par XGBoost, avec comparaison de modèles, optimisation du seuil de décision, tuning via Optuna, tracking MLflow, et déploiement complet sur AWS ECS Fargate.
 
-### Problem solved & benefits
+---
 
-- Faster decisions: Predicts which customers are likely to churn so teams can act before they leave.
-- Operationalized ML: Model is accessible via a REST API and a simple UI; anyone can test it without notebooks.
-- Repeatable delivery: CI/CD + containers mean every change can be rebuilt, tested, and redeployed in a consistent way.
-- Traceable experiments: MLflow tracks runs, metrics, and artifacts for reproducibility and auditing.
+## Contexte
 
-### What I built
+**Point de départ** : le dataset [Telco Customer Churn](https://www.kaggle.com/datasets/blastchar/telco-customer-churn), un dataset de référence dans le domaine télécom avec 7 043 clients réels et 21 variables (profil, services souscrits, contrat, facturation).
 
-- Data & Modeling: Feature engineering + XGBoost classifier; experiments logged to MLflow.
-- Model tracking: Runs, metrics, and the serialized model logged under a named MLflow experiment.
-- Inference service: FastAPI app exposing /predict (POST) and a root health check /.
-- Web UI: Gradio interface mounted at /ui for quick, shareable manual testing.
-- Containerization: Docker image with uvicorn entrypoint (src.app.main:app) listening on port 8000.
-- CI/CD: GitHub Actions builds the image and pushes to Docker Hub; optionally triggers an ECS service update.
-- Orchestration: AWS ECS Fargate runs the container (serverless).
-- Networking: Application Load Balancer (ALB) on HTTP:80 forwarding to a Target Group (IP targets on HTTP:8000).
-- Security: Security groups scoped to allow ALB inbound 80 from the internet, and task inbound 8000 from the ALB SG.
-- Observability: CloudWatch Logs for container stdout/stderr and ECS service events.
+**Problème métier** : un client qui résilie coûte plus cher à remplacer qu'à retenir. Dans ce contexte, manquer un churner (faux négatif) est plus coûteux que contacter un client fidèle (faux positif). Cette contrainte oriente directement les choix de modélisation : **le recall est la métrique prioritaire**.
 
-### Deployment flow (high-level)
+**Objectif** : construire un pipeline ML complet, de l'analyse exploratoire jusqu'au modèle en production, accessible via une API REST et une interface web.
 
-- Push to main → GitHub Actions builds the Docker image and pushes it to Docker Hub.
-- ECS service is updated (manually or via the workflow) to force a new deployment.
-- ALB health checks hit / on port 8000; once healthy, traffic is routed to the new task.
-- Users call POST /predict or open the Gradio UI at /ui via the ALB DNS.
+---
 
-### Roadblocks & how we solved them
+## Compétences démontrées
 
-Unhealthy targets behind ALB
+| Compétence | Ce qui est fait dans ce projet |
+|---|---|
+| **Analyse exploratoire** | Identification des variables corrélées au churn, analyse du déséquilibre de classes (27% de churners), corrélations |
+| **Machine Learning** | Comparaison de 3 modèles (RandomForest, LightGBM, XGBoost), gestion du déséquilibre (`scale_pos_weight`), tuning du seuil de décision, optimisation via Optuna |
+| **MLOps** | Tracking MLflow (paramètres, métriques, artefacts), pipeline reproductible entraînement → production |
+| **Déploiement Cloud** | Conteneurisation Docker, CI/CD GitHub Actions → Docker Hub, déploiement AWS ECS Fargate + ALB |
+| **API & Interface** | API REST FastAPI, interface web Streamlit |
 
-- Cause: App didn’t respond at the health-check path; listener/target port mismatches.
-- Fixes: Added GET / health endpoint; confirmed ALB listener on 80 forwards to TG on 8000; TG health check path set to /.
+---
 
-Module import error in container (ModuleNotFoundError: serving)
+## Architecture
 
-- Cause: Python path in the image didn’t include src/.
-- Fixes: Set PYTHONPATH=/app/src in the Dockerfile; corrected uvicorn app path to src.app.main:app.
+```
+Données brutes (CSV Telco)
+        │
+        ▼
+Preprocessing + Feature Engineering
+        │
+        ├── Validation des données (Great Expectations)
+        ├── Encodage binaire / One-hot encoding
+        └── Alignement des colonnes entraînement ↔ production
+                │
+                ▼
+        Entraînement XGBoost
+        ├── Comparaison RandomForest / LightGBM / XGBoost
+        ├── Gestion déséquilibre (scale_pos_weight)
+        ├── Tuning seuil de décision (0.35)
+        ├── Optimisation Optuna (30 essais)
+        └── Tracking MLflow (métriques, paramètres, modèle)
+                │
+                ▼
+        Modèle sérialisé (MLflow artifacts)
+                │
+                ├── FastAPI (API REST /predict)
+                └── Streamlit (interface web)
+                        │
+                        ▼
+                AWS ECS Fargate + ALB
+```
 
-ALB DNS timing out
+---
 
-- Cause: Security group rules not aligned with traffic flow.
-- Fixes: ALB SG allows inbound 80 from 0.0.0.0/0; task SG allows inbound 8000 from the ALB SG; outbound open.
+## Machine Learning : détail des choix
 
-ECS redeploy not picking up the new image
+C'est le cœur du projet. Chaque décision est motivée par la contrainte métier.
 
-- Cause: Service still running previous task definition.
-- Fixes: Force new deployment (CLI or console) after pushing the new image; optional step added to CI.
+### Déséquilibre de classes
 
-Gradio UI error (“No runs found in experiment”)
+Le dataset contient **27% de churners**. Sans traitement, un modèle naïf prédirait "Non-churn" pour tout le monde et obtiendrait 73% de précision globale, sans jamais détecter un seul churner. Deux mécanismes sont utilisés :
 
-- Cause: Inference/UI expected an MLflow-logged model but couldn’t resolve a run.
-- Fixes: Standardized MLflow experiment name and model logging in training; inference loads the logged model consistently (and a local path for dev).
+- `class_weight='balanced'` pour RandomForest
+- `scale_pos_weight = n_non_churners / n_churners` pour XGBoost
 
-Local testing vs. prod paths
+### Comparaison des modèles
 
-- Cause: MLflow artifact URIs differ locally vs. in container.
-- Fixes: For local dev, load via direct ./mlruns/.../artifacts/model; in prod, container loads the packaged model path used at build time.
+Trois modèles ont été comparés à seuil de décision identique (0.35) :
+
+| Modèle | Recall (churners) |
+|---|---|
+| RandomForest | 71,7 % |
+| Réseaux de neurones | 69.4 % |
+| **XGBoost** | **91,7 %** |
+
+XGBoost est sélectionné pour sa capacité à gérer le déséquilibre de classes via `scale_pos_weight` et ses meilleures performances en recall.
+
+### Tuning du seuil de décision
+
+Le seuil par défaut (0.5) est sous-optimal dans ce contexte. Un seuil plus bas (0.35) permet de détecter plus de churners au prix d'un léger surcoût de faux positifs — compromis acceptable selon la contrainte métier.
+
+### Optimisation des hyperparamètres (Optuna)
+
+30 essais Optuna sur les hyperparamètres clés (`n_estimators`, `learning_rate`, `max_depth`, `subsample`, `colsample_bytree`, `min_child_weight`, `gamma`, `reg_alpha`, `reg_lambda`).
+
+**Meilleur résultat** : Recall = **91,71 %** (trial 25)
+
+### Insights EDA
+
+- Le type de contrat est le principal facteur de churn : les clients avec contrat mensuel sont beaucoup plus susceptibles de résilier (`Contract_Two year` : corrélation -0.30 avec le churn)
+- L'ancienneté est fortement négativement corrélée au churn (`tenure` : -0.35) — plus un client reste longtemps, moins il est susceptible de partir
+
+---
+
+## MLOps & Tracking
+
+Chaque entraînement est tracké via **MLflow** :
+- Paramètres : hyperparamètres du modèle, seuil, taille du jeu de test
+- Métriques : recall, precision, F1, ROC-AUC, temps d'entraînement
+- Artefacts : modèle sérialisé, `feature_columns.txt`, `preprocessing.pkl`
+
+La cohérence entre entraînement et production est garantie : les transformations appliquées aux données (encodage, ordre des colonnes) sont strictement identiques via les artefacts MLflow chargés au moment de la prédiction.
+
+---
+
+## Stack technique
+
+| Couche | Technologie |
+|---|---|
+| Machine Learning | XGBoost, scikit-learn, Optuna |
+| Tracking | MLflow |
+| Validation données | Great Expectations |
+| API | FastAPI, Pydantic |
+| Interface | Streamlit |
+| Conteneurisation | Docker |
+| CI/CD | GitHub Actions → Docker Hub |
+| Cloud | AWS ECS Fargate, ALB |
+
+---
+
+## Dataset
+
+- **Source** : [Telco Customer Churn](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) (Kaggle)
+- **Volume** : 7 043 clients, 21 variables
+- **Cible** : variable `Churn` (Yes/No) — 26,5% de churners
+
+---
+
+## Application en ligne
+
+Interface Streamlit déployée sur AWS ECS Fargate :
+**http://telco-alb-101861819.eu-north-1.elb.amazonaws.com/**
+
+---
+
+## Installation locale
+
+### Prérequis
+- Python 3.11+
+- Docker Desktop
+
+### Lancement
+
+```bash
+# 1. Cloner le repo
+git clone https://github.com/Nesho-k/churn.git
+cd churn
+
+# 2. Créer l'environnement virtuel
+python -m venv venv
+source venv/bin/activate  # Windows : venv\Scripts\activate
+
+# 3. Installer les dépendances
+pip install -r requirements.txt
+
+# 4. Lancer le pipeline d'entraînement
+python scripts/run_pipeline.py --input data/raw/Telco-Customer-Churn.csv --target Churn
+
+# 5. Lancer l'interface Streamlit
+streamlit run src/app/streamlit_app.py
+
+# 6. Ou lancer l'API FastAPI
+python -m uvicorn src.app.main:app --host 0.0.0.0 --port 8000
+```
+
+---
+
+## Structure du projet
+
+```
+churn/
+├── data/
+│   ├── raw/                    Dataset Telco original
+│   └── processed/              Données nettoyées
+├── notebooks/
+│   └── EDA.ipynb               Analyse exploratoire + comparaison modèles
+├── scripts/
+│   ├── run_pipeline.py         Pipeline d'entraînement complet
+│   ├── prepare_processed_data.py
+│   └── test_*.py               Scripts de test
+├── src/
+│   ├── app/
+│   │   ├── main.py             API FastAPI
+│   │   └── streamlit_app.py    Interface web
+│   ├── features/
+│   │   └── build_features.py   Feature engineering
+│   ├── serving/
+│   │   └── inference.py        Chargement modèle + prédiction
+│   └── utils/
+│       └── validate_data.py    Validation des données
+├── mlruns/                     Expériences MLflow (non versionné)
+├── artifacts/                  Artefacts partagés
+├── .github/workflows/
+│   └── ci.yml                  CI/CD GitHub Actions
+├── dockerfile
+└── requirements.txt
+```
+
+---
+
+## Auteur
+
+**Nesho Kanthakumar**
+Étudiant en Data Science
+[GitHub](https://github.com/Nesho-k) · [LinkedIn](https://www.linkedin.com/in/nesho-kanthakumar-6354512a6/)
