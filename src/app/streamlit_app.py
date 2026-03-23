@@ -93,6 +93,24 @@ st.markdown("""
         margin: 0 -3rem;
     }
 
+    /* ── GitHub button ── */
+    .github-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(255,255,255,0.15);
+        color: white !important;
+        text-decoration: none !important;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border: 1px solid rgba(255,255,255,0.3);
+        margin-top: 1rem;
+        transition: background 0.2s;
+    }
+    .github-btn:hover { background: rgba(255,255,255,0.25); }
+
     /* ── Section labels ── */
     .section-label {
         font-size: 0.78rem;
@@ -160,6 +178,7 @@ st.markdown("""
         <div>
             <h1 class="header-title">Prédiction de Résiliation Client</h1>
             <p class="header-sub">Analysez le risque de résiliation grâce à un modèle XGBoost entraîné sur des données telecom réelles.</p>
+            <a class="github-btn" href="https://github.com/Nesho-k/churn" target="_blank">Code source GitHub</a>
         </div>
         <div class="header-stats">
             <div class="stat-card">
@@ -236,12 +255,12 @@ with st.form("churn_form"):
                 "Bank transfer (automatic)": "Virement automatique",
                 "Credit card (automatic)": "Carte bancaire automatique"
             }[x])
-
+            
     st.markdown("<br>", unsafe_allow_html=True)
     _, col_btn, _ = st.columns([1, 1, 1])
     with col_btn:
         submitted = st.form_submit_button("Analyser", use_container_width=True)
-
+            
 if submitted:
     data = {
         "gender": gender,
