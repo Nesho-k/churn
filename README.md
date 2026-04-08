@@ -28,33 +28,11 @@ Projet de Data Science appliqué au secteur télécom : prédiction du churn cli
 
 ## Architecture
 
-```
-Données brutes (CSV Telco)
-        │
-        ▼
-Preprocessing + Feature Engineering
-        │
-        ├── Validation des données (Great Expectations)
-        ├── Encodage binaire / One-hot encoding
-        └── Alignement des colonnes entraînement ↔ production
-                │
-                ▼
-        Entraînement XGBoost
-        ├── Comparaison RandomForest / LightGBM / XGBoost
-        ├── Gestion déséquilibre (scale_pos_weight)
-        ├── Tuning seuil de décision (0.35)
-        ├── Optimisation Optuna (30 essais)
-        └── Tracking MLflow (métriques, paramètres, modèle)
-                │
-                ▼
-        Modèle sérialisé (MLflow artifacts)
-                │
-                ├── FastAPI (API REST /predict)
-                └── Streamlit (interface web)
-                        │
-                        ▼
-                AWS ECS Fargate + ALB
-```
+Le pipeline part du CSV brut Telco et passe d'abord par une étape de preprocessing : validation des données (Great Expectations), encodage des variables catégorielles et alignement des colonnes entre entraînement et production.
+
+Le modèle est ensuite entraîné (XGBoost, sélectionné après comparaison avec RandomForest et LightGBM), avec gestion du déséquilibre de classes, tuning du seuil de décision à 0.35, et optimisation des hyperparamètres via Optuna sur 30 essais. Chaque run est tracké dans MLflow.
+
+Une fois le modèle sérialisé, il est servi de deux façons : une API REST via FastAPI et une interface web via Streamlit. L'ensemble est conteneurisé avec Docker et déployé sur AWS ECS Fargate derrière un ALB.
 
 ---
 
@@ -173,34 +151,9 @@ python -m uvicorn src.app.main:app --host 0.0.0.0 --port 8000
 
 ## Structure du projet
 
-```
-churn/
-├── data/
-│   ├── raw/                    Dataset Telco original
-│   └── processed/              Données nettoyées
-├── notebooks/
-│   └── EDA.ipynb               Analyse exploratoire + comparaison modèles
-├── scripts/
-│   ├── run_pipeline.py         Pipeline d'entraînement complet
-│   ├── prepare_processed_data.py
-│   └── test_*.py               Scripts de test
-├── src/
-│   ├── app/
-│   │   ├── main.py             API FastAPI
-│   │   └── streamlit_app.py    Interface web
-│   ├── features/
-│   │   └── build_features.py   Feature engineering
-│   ├── serving/
-│   │   └── inference.py        Chargement modèle + prédiction
-│   └── utils/
-│       └── validate_data.py    Validation des données
-├── mlruns/                     Expériences MLflow (non versionné)
-├── artifacts/                  Artefacts partagés
-├── .github/workflows/
-│   └── ci.yml                  CI/CD GitHub Actions
-├── dockerfile
-└── requirements.txt
-```
+Le code source est dans `src/`, organisé en trois parties : `app/` pour l'API FastAPI et l'interface Streamlit, `features/` pour le feature engineering, `serving/` pour le chargement du modèle et la prédiction.
+
+Les scripts d'entraînement sont dans `scripts/`, avec `run_pipeline.py` comme point d'entrée principal. Les données brutes et traitées sont dans `data/`, et les expériences MLflow dans `mlruns/` (non versionné). Le CI/CD est géré par `.github/workflows/ci.yml`.
 
 ---
 
