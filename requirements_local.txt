@@ -1,0 +1,16 @@
+pandas
+numpy
+scikit-learn
+mlflow
+fastapi
+uvicorn
+pydantic
+python-dotenv
+joblib
+great-expectations
+pytest
+xgboost
+lightgbm
+catboost
+optuna
+streamlit==1.39.0
