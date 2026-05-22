@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
-import sys
 import time
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-
+import requests
 import streamlit as st
-from src.serving.inference import predict
+
+API_URL = os.environ.get("API_URL", st.secrets.get("API_URL", ""))
 
 st.set_page_config(
     page_title="Prédiction de Résiliation Client",
@@ -289,7 +288,9 @@ if submitted:
         bar = st.progress(0, text="Préparation des données...")
         time.sleep(0.3)
         bar.progress(40, text="Application du modèle...")
-        result = predict(data)
+        response = requests.post(f"{API_URL}/predict", json=data, timeout=10)
+        response.raise_for_status()
+        result = response.json()["prediction"]
         time.sleep(0.3)
         bar.progress(100, text="Analyse terminée")
         time.sleep(0.3)
