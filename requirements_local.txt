@@ -13,4 +13,5 @@ xgboost
 lightgbm
 catboost
 optuna
+torch
 streamlit==1.39.0

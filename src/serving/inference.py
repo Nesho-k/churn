@@ -25,53 +25,75 @@ Production Deployment:
 """
 
 import os
+import glob
 import pandas as pd
 import mlflow
+from mlflow.tracking import MlflowClient
 
-# === MODEL LOADING CONFIGURATION ===
-# IMPORTANT: This path is set during Docker container build
-# In development: uses local MLflow artifacts
-# In production: uses model copied to container at build time
-MODEL_DIR = "/app/model"
+# === MODEL LOADING — 3 niveaux de priorité ===
+#
+# 1. MLflow Model Registry  →  "models:/churn-model/Production"
+#    Utilisé quand le meilleur run a été promu en Production dans MLflow UI.
+#    Permet de changer de modèle sans toucher au code.
+#
+# 2. Chemin Docker           →  /app/model
+#    Utilisé dans le conteneur Cloud Run (modèle copié à la construction).
+#
+# 3. Fallback local          →  src/serving/model/*/artifacts/model
+#    Utilisé en développement local.
 
+MODEL_NAME  = os.environ.get("MLFLOW_MODEL_NAME", "churn-model")
+MODEL_STAGE = os.environ.get("MLFLOW_MODEL_STAGE", "Production")
+MODEL_DIR   = None
+model       = None
+
+# Niveau 1 — Model Registry
 try:
-    # Load the trained XGBoost model in MLflow pyfunc format
-    # This ensures compatibility regardless of the underlying ML library
-    model = mlflow.pyfunc.load_model(MODEL_DIR)
-    print(f"✅ Model loaded successfully from {MODEL_DIR}")
-except Exception as e:
-    print(f"❌ Failed to load model from {MODEL_DIR}: {e}")
-    # Fallback for local development
+    registry_uri = f"models:/{MODEL_NAME}/{MODEL_STAGE}"
+    model = mlflow.pyfunc.load_model(registry_uri)
+    # Récupère le run_id pour charger feature_columns.txt
+    client = MlflowClient()
+    versions = client.get_latest_versions(MODEL_NAME, stages=[MODEL_STAGE])
+    MODEL_DIR = f"runs:/{versions[0].run_id}/model"
+    print(f"✅ Model loaded from Registry — {registry_uri}")
+except Exception:
+    pass
+
+# Niveau 2 — Chemin Docker
+if model is None:
     try:
-        import glob
-        # Search pre-existing serving models first, then mlruns
-        local_model_paths = (
+        model = mlflow.pyfunc.load_model("/app/model")
+        MODEL_DIR = "/app/model"
+        print("✅ Model loaded from Docker path — /app/model")
+    except Exception:
+        pass
+
+# Niveau 3 — Fallback local
+if model is None:
+    try:
+        candidates = (
             glob.glob("./src/serving/model/*/artifacts/model") +
             glob.glob("./mlruns/*/*/artifacts/model")
         )
-        if local_model_paths:
-            latest_model = max(local_model_paths, key=os.path.getmtime)
-            model = mlflow.pyfunc.load_model(latest_model)
-            MODEL_DIR = latest_model
-            print(f"✅ Fallback: Loaded model from {latest_model}")
-        else:
+        if not candidates:
             raise Exception("No model found locally")
-    except Exception as fallback_error:
-        raise Exception(f"Failed to load model: {e}. Fallback failed: {fallback_error}")
+        MODEL_DIR = max(candidates, key=os.path.getmtime)
+        model = mlflow.pyfunc.load_model(MODEL_DIR)
+        print(f"✅ Model loaded from local fallback — {MODEL_DIR}")
+    except Exception as e:
+        raise RuntimeError(f"Failed to load model from all sources: {e}")
 
 # === FEATURE SCHEMA LOADING ===
-# CRITICAL: Load the exact feature column order used during training
-# This ensures the model receives features in the expected order
+# Charge feature_columns.txt depuis les artifacts du run associé au modèle.
 try:
-    # feature_columns.txt may be inside MODEL_DIR (Docker) or in the parent artifacts/ folder (local)
     feature_file = os.path.join(MODEL_DIR, "feature_columns.txt")
     if not os.path.exists(feature_file):
         feature_file = os.path.join(os.path.dirname(MODEL_DIR), "feature_columns.txt")
     with open(feature_file) as f:
         FEATURE_COLS = [ln.strip() for ln in f if ln.strip()]
-    print(f"✅ Loaded {len(FEATURE_COLS)} feature columns from training")
+    print(f"✅ Loaded {len(FEATURE_COLS)} feature columns")
 except Exception as e:
-    raise Exception(f"Failed to load feature columns: {e}")
+    raise RuntimeError(f"Failed to load feature columns: {e}")
 
 # === FEATURE TRANSFORMATION CONSTANTS ===
 # CRITICAL: These mappings must exactly match those used in training
